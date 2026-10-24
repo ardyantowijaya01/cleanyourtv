@@ -17,7 +17,7 @@ jobs:
         working-directory: launcher
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --console=plain
+          ./gradlew testReleaseUnitTest assembleRelease --no-daemon --console=plain
       - name: Report size
         run: ls -l launcher/app/build/outputs/apk/release/
       - uses: actions/upload-artifact@v4
