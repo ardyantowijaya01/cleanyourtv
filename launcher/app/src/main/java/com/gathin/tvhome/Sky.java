@@ -117,6 +117,59 @@ final class Sky {
         return Math.max(0, Math.min(23, hour)) * 60 + Math.max(0, Math.min(59, minute));
     }
 
+    /** Where the sun or the moon sits now, as fractions of the screen. */
+    static final class Body {
+        /** True for the moon, false for the sun; only one is up at a time. */
+        final boolean moon;
+        /** 0 at the left edge, 1 at the right edge: the body rises left and sets right. */
+        final float x;
+        /** 0 on the horizon, 1 at the top of its arc. */
+        final float alt;
+
+        Body(boolean moon, float x, float alt) {
+            this.moon = moon;
+            this.x = x;
+            this.alt = alt;
+        }
+    }
+
+    /**
+     * The sun between {@code sunrise} and {@code sunset}, the moon through the night that follows,
+     * each on a half-circle arc from the left horizon to the right one. Minutes of the day, as
+     * {@link #at(int, int, int)} takes them; an unusable pair falls back to the reference day.
+     */
+    static Body bodyAt(int minuteOfDay, int sunrise, int sunset) {
+        int rise = sunrise;
+        int set = sunset;
+        if (rise <= 0 || set >= 1440 || rise >= set) {
+            rise = REF_SUNRISE;
+            set = REF_SUNSET;
+        }
+        int m = Math.max(0, Math.min(1440, minuteOfDay));
+        if (m >= rise && m <= set) {
+            float t = (m - rise) / (float) (set - rise);
+            return new Body(false, t, (float) Math.sin(Math.PI * t));
+        }
+        // The night wraps midnight: from sunset to the next day's sunrise.
+        float elapsed = m > set ? m - set : 1440 - set + m;
+        float t = elapsed / (1440 - (set - rise));
+        return new Body(true, t, (float) Math.sin(Math.PI * t));
+    }
+
+    /** Length of a lunar month in days, for the moon's phase. */
+    private static final float SYNODIC = 29.530588853f;
+
+    /** Fraction of the moon's disc that is lit, from the day of the lunar month (1 = new moon). */
+    static float moonLit(int lunarDay) {
+        double phase = ((lunarDay - 1) % SYNODIC) / SYNODIC;
+        return (float) ((1 - Math.cos(2 * Math.PI * phase)) / 2);
+    }
+
+    /** True while the moon is waxing, so the lit edge is on its right. */
+    static boolean moonWaxing(int lunarDay) {
+        return ((lunarDay - 1) % SYNODIC) < SYNODIC / 2;
+    }
+
     /** Blends two opaque ARGB colours channel by channel; {@code t} is 0 to 1. */
     static int lerpColor(int from, int to, float t) {
         float f = Math.max(0f, Math.min(1f, t));
