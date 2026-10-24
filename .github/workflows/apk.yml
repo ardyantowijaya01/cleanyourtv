@@ -13,6 +13,18 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-34 build-tools;34.0.0
+      - name: Stable debug signing key
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ -f launcher/ci-debug.keystore ]; then
+            cp launcher/ci-debug.keystore "$HOME/.android/debug.keystore"
+          else
+            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+            cp "$HOME/.android/debug.keystore" launcher/ci-debug.keystore
+          fi
       - name: Build release APK
         working-directory: launcher
         run: |
@@ -20,6 +32,11 @@ jobs:
           ./gradlew testReleaseUnitTest assembleRelease --no-daemon --console=plain
       - name: Report size
         run: ls -l launcher/app/build/outputs/apk/release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debug-keystore
+          path: launcher/ci-debug.keystore
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: tvhome-apk
